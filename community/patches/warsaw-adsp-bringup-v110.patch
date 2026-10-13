@@ -1,0 +1,17 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750.dtsi b/arch/arm64/boot/dts/qcom/sm8750.dtsi
+--- a/arch/arm64/boot/dts/qcom/sm8750.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8750.dtsi
+@@ -2214,3 +2214,3 @@
+-		remoteproc_adsp: remoteproc@6800000 {
++		remoteproc_adsp: remoteproc@3000000 {
+ 			compatible = "qcom,sm8750-adsp-pas", "qcom,sm8550-adsp-pas";
+-			reg = <0x0 0x06800000 0x0 0x10000>;
++			reg = <0x0 0x03000000 0x0 0x10000>;
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -160,3 +160,3 @@
+ &remoteproc_adsp {
+-	status = "disabled";
++	status = "okay";
+ };

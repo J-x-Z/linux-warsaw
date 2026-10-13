@@ -1,0 +1,269 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -8,6 +8,17 @@
+ 	model = "Xiaomi Warsaw (mainline bring-up)";
+ 	compatible = "xiaomi,warsaw", "qcom,sm8750";
+ 
++	display_panel_vddd: regulator-display-panel-vddd {
++		compatible = "regulator-fixed";
++		regulator-name = "display_panel_vddd";
++		regulator-min-microvolt = <1100000>;
++		regulator-max-microvolt = <1100000>;
++		gpio = <&tlmm 120 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++		regulator-always-on;
++		regulator-boot-on;
++	};
++
+ 	hypervisor {
+ 		compatible = "qcom,gunyah-hypervisor-1.0",
+ 			     "qcom,gunyah-hypervisor", "simple-bus";
+@@ -122,19 +133,47 @@
+ };
+ 
+ &mdss {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &mdss_dp0 {
+ 	status = "disabled";
+ };
+ 
+ &mdss_dsi0 {
+-	status = "disabled";
++	vdda-supply = <&vreg_l3g_1p2>;
++	status = "okay";
++
++	/delete-node/ panel@0;
++
++	panel@0 {
++		compatible = "xiaomi,p12x-42-02-0a";
++		reg = <0>;
++
++		vddio-supply = <&vreg_l2g_1p8>;
++		vci-supply = <&vreg_l13b_3p0>;
++		vdd-supply = <&display_panel_vddd>;
++
++		pinctrl-0 = <&disp0_reset_n_active>, <&mdp_vsync>;
++		pinctrl-1 = <&disp0_reset_n_suspend>, <&mdp_vsync>;
++		pinctrl-names = "default", "sleep";
++
++		port {
++			p12x_panel_in: endpoint {
++				remote-endpoint = <&mdss_dsi0_out>;
++			};
++		};
++	};
++};
++
++&mdss_dsi0_out {
++	remote-endpoint = <&p12x_panel_in>;
++	data-lanes = <0 1 2 3>;
+ };
+ 
+ &mdss_dsi0_phy {
+-	status = "disabled";
++	vdds-supply = <&vreg_l3i_0p88>;
++	status = "okay";
+ };
+ 
+ &pcie0 {
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -1129,5 +1129,16 @@ config DRM_PANEL_WIDECHIPS_WS2401
+ 	  This display is used in the Samsung Galaxy Ace 2 GT-I8160 (Codina).
+ 
++config DRM_PANEL_XIAOMI_P12X
++	tristate "Xiaomi P12X bootloader-handoff panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	select DRM_DISPLAY_DSC_HELPER
++	select DRM_DISPLAY_HELPER
++	help
++	  Experimental handoff-only support for the 1280x2772 DSC command-mode
++	  OLED panel used by Xiaomi Warsaw. The bootloader must leave the panel
++	  powered and initialized.
++
+ config DRM_PANEL_XINPENG_XPP055C272
+ 	tristate "Xinpeng XPP055C272 panel driver"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -128,5 +128,6 @@ obj-$(CONFIG_DRM_PANEL_VISIONOX_RM69299) += panel-visionox-rm69299.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_RM692E5) += panel-visionox-rm692e5.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_VTDR6130) += panel-visionox-vtdr6130.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_R66451) += panel-visionox-r66451.o
+ obj-$(CONFIG_DRM_PANEL_WIDECHIPS_WS2401) += panel-widechips-ws2401.o
++obj-$(CONFIG_DRM_PANEL_XIAOMI_P12X) += panel-xiaomi-p12x.o
+ obj-$(CONFIG_DRM_PANEL_XINPENG_XPP055C272) += panel-xinpeng-xpp055c272.o
+diff --git a/drivers/gpu/drm/panel/panel-xiaomi-p12x.c b/drivers/gpu/drm/panel/panel-xiaomi-p12x.c
+new file mode 100644
+--- /dev/null
++++ b/drivers/gpu/drm/panel/panel-xiaomi-p12x.c
+@@ -0,0 +1,162 @@
++// SPDX-License-Identifier: GPL-2.0-only
++
++#include <linux/delay.h>
++#include <linux/module.h>
++#include <linux/of.h>
++
++#include <drm/display/drm_dsc.h>
++#include <drm/display/drm_dsc_helper.h>
++#include <drm/drm_mipi_dsi.h>
++#include <drm/drm_modes.h>
++#include <drm/drm_panel.h>
++#include <drm/drm_probe_helper.h>
++
++struct xiaomi_p12x {
++	struct drm_panel panel;
++	struct mipi_dsi_device *dsi;
++	struct drm_dsc_config dsc;
++	bool prepared;
++};
++
++static inline struct xiaomi_p12x *to_xiaomi_p12x(struct drm_panel *panel)
++{
++	return container_of(panel, struct xiaomi_p12x, panel);
++}
++
++static const struct drm_display_mode xiaomi_p12x_60hz_mode = {
++	.clock = 289267,
++	.hdisplay = 1280,
++	.hsync_start = 1280 + 408,
++	.hsync_end = 1280 + 408 + 2,
++	.htotal = 1280 + 408 + 2 + 4,
++	.vdisplay = 2772,
++	.vsync_start = 2772 + 54,
++	.vsync_end = 2772 + 54 + 10,
++	.vtotal = 2772 + 54 + 10 + 10,
++	.type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED,
++};
++
++static int xiaomi_p12x_prepare(struct drm_panel *panel)
++{
++	struct xiaomi_p12x *ctx = to_xiaomi_p12x(panel);
++	struct drm_dsc_picture_parameter_set pps;
++	struct device *dev = &ctx->dsi->dev;
++	int ret;
++
++	if (ctx->prepared)
++		return 0;
++
++	ctx->dsi->mode_flags |= MIPI_DSI_MODE_LPM;
++	drm_dsc_pps_payload_pack(&pps, &ctx->dsc);
++
++	ret = mipi_dsi_picture_parameter_set(ctx->dsi, &pps);
++	if (ret < 0) {
++		dev_err(dev, "failed to transmit DSC PPS: %d\n", ret);
++		return ret;
++	}
++
++	ret = mipi_dsi_compression_mode(ctx->dsi, true);
++	if (ret < 0) {
++		dev_err(dev, "failed to enable DSC: %d\n", ret);
++		return ret;
++	}
++
++	msleep(28);
++	ctx->prepared = true;
++	dev_info(dev, "adopted ABL-initialized P12X panel state\n");
++
++	return 0;
++}
++
++static int xiaomi_p12x_unprepare(struct drm_panel *panel)
++{
++	struct xiaomi_p12x *ctx = to_xiaomi_p12x(panel);
++
++	ctx->prepared = false;
++	return 0;
++}
++
++static int xiaomi_p12x_get_modes(struct drm_panel *panel,
++				 struct drm_connector *connector)
++{
++	connector->display_info.width_mm = 73;
++	connector->display_info.height_mm = 158;
++
++	return drm_connector_helper_get_modes_fixed(connector,
++						    &xiaomi_p12x_60hz_mode);
++}
++
++static const struct drm_panel_funcs xiaomi_p12x_panel_funcs = {
++	.prepare = xiaomi_p12x_prepare,
++	.unprepare = xiaomi_p12x_unprepare,
++	.get_modes = xiaomi_p12x_get_modes,
++};
++
++static int xiaomi_p12x_probe(struct mipi_dsi_device *dsi)
++{
++	struct device *dev = &dsi->dev;
++	struct xiaomi_p12x *ctx;
++	int ret;
++
++	ctx = devm_drm_panel_alloc(dev, struct xiaomi_p12x, panel,
++				   &xiaomi_p12x_panel_funcs,
++				   DRM_MODE_CONNECTOR_DSI);
++	if (IS_ERR(ctx))
++		return PTR_ERR(ctx);
++
++	ctx->dsi = dsi;
++	mipi_dsi_set_drvdata(dsi, ctx);
++
++	dsi->lanes = 4;
++	dsi->format = MIPI_DSI_FMT_RGB888;
++	dsi->mode_flags = MIPI_DSI_MODE_NO_EOT_PACKET |
++			  MIPI_DSI_CLOCK_NON_CONTINUOUS;
++
++	ctx->panel.prepare_prev_first = true;
++	drm_panel_add(&ctx->panel);
++
++	dsi->dsc = &ctx->dsc;
++	ctx->dsc.dsc_version_major = 1;
++	ctx->dsc.dsc_version_minor = 2;
++	ctx->dsc.slice_height = 12;
++	ctx->dsc.slice_width = 640;
++	ctx->dsc.slice_count = 2;
++	ctx->dsc.bits_per_component = 10;
++	ctx->dsc.bits_per_pixel = 8 << 4;
++	ctx->dsc.block_pred_enable = true;
++
++	ret = mipi_dsi_attach(dsi);
++	if (ret < 0) {
++		drm_panel_remove(&ctx->panel);
++		return dev_err_probe(dev, ret, "failed to attach DSI host\n");
++	}
++
++	return 0;
++}
++
++static void xiaomi_p12x_remove(struct mipi_dsi_device *dsi)
++{
++	struct xiaomi_p12x *ctx = mipi_dsi_get_drvdata(dsi);
++
++	mipi_dsi_detach(dsi);
++	drm_panel_remove(&ctx->panel);
++}
++
++static const struct of_device_id xiaomi_p12x_of_match[] = {
++	{ .compatible = "xiaomi,p12x-42-02-0a" },
++	{ }
++};
++MODULE_DEVICE_TABLE(of, xiaomi_p12x_of_match);
++
++static struct mipi_dsi_driver xiaomi_p12x_driver = {
++	.probe = xiaomi_p12x_probe,
++	.remove = xiaomi_p12x_remove,
++	.driver = {
++		.name = "panel-xiaomi-p12x",
++		.of_match_table = xiaomi_p12x_of_match,
++	},
++};
++module_mipi_dsi_driver(xiaomi_p12x_driver);
++
++MODULE_DESCRIPTION("Xiaomi P12X bootloader-handoff DSC panel driver");
++MODULE_LICENSE("GPL");

@@ -1,0 +1,90 @@
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -4087,5 +4087,11 @@ static int sd_probe(struct scsi_device *sdp)
+ 			sd_printk(KERN_NOTICE, sdkp,
+ 				  "Warsaw root-window writer enabled for LUN0; partition scan enabled\n");
++		} else if (sdp->lun == 4) {
++			sdkp->write_prot = 0;
++			set_disk_ro(gd, 0);
++			gd->flags |= GENHD_FL_NO_PART;
++			sd_printk(KERN_NOTICE, sdkp,
++				  "Warsaw GPT fallback writer enabled for LUN4; partition scan disabled\n");
+ 		} else {
+ 			gd->flags |= GENHD_FL_NO_PART;
+ 			sdkp->write_prot = 1;
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -3050,6 +3050,35 @@ static int ufshcd_init_cmd_priv(struct Scsi_Host *host, struct scsi_cmnd *cmd)
+ 
+ #define WARSAW_ROOT_FIRST_LBA	32815360ULL
+ #define WARSAW_ROOT_LAST_LBA	62112234ULL
++#define WARSAW_LUN4_LAST_LBA	504831ULL
++
++static bool ufshcd_warsaw_gpt_window_write(struct scsi_cmnd *cmd)
++{
++	sector_t lba;
++	sector_t last_lba;
++	unsigned int blocks;
++	unsigned int primary_last;
++	unsigned int backup_entries_first;
++	unsigned int backup_entries_last;
++
++	if (cmd->cmnd[0] != WRITE_10 && cmd->cmnd[0] != WRITE_16)
++		return false;
++	if (cmd->device->lun != 4)
++		return false;
++	last_lba = WARSAW_LUN4_LAST_LBA;
++	primary_last = 4;
++	backup_entries_first = WARSAW_LUN4_LAST_LBA - 6;
++	backup_entries_last = WARSAW_LUN4_LAST_LBA - 4;
++
++	lba = scsi_get_lba(cmd);
++	blocks = scsi_logical_block_count(cmd);
++	if (!blocks || lba > last_lba || blocks - 1 > last_lba - lba)
++		return false;
++	return (lba >= 1 && lba + blocks - 1 <= primary_last) ||
++	       (lba >= backup_entries_first &&
++		lba + blocks - 1 <= backup_entries_last) ||
++	       (lba == last_lba && blocks == 1);
++}
+ 
+ static bool ufshcd_warsaw_root_window_write(struct scsi_cmnd *cmd)
+ {
+@@ -3070,9 +3099,11 @@ static bool ufshcd_warsaw_root_window_write(struct scsi_cmnd *cmd)
+ 
+ static bool ufshcd_warsaw_command_may_modify_media(struct scsi_cmnd *cmd)
+ {
++	if (ufshcd_warsaw_gpt_window_write(cmd))
++		return false;
+ 	if (ufshcd_warsaw_root_window_write(cmd))
+ 		return false;
+-	if (cmd->device->lun == 0 &&
++	if ((cmd->device->lun == 0 || cmd->device->lun == 4) &&
+ 	    (cmd->cmnd[0] == SYNCHRONIZE_CACHE ||
+ 	     cmd->cmnd[0] == SYNCHRONIZE_CACHE_16))
+ 		return false;
+@@ -3149,7 +3180,13 @@ static enum scsi_qc_status ufshcd_queuecommand(struct Scsi_Host *host,
+ 		dev_notice_ratelimited(hba->dev,
+ 			"Warsaw UFS guard allowed root-window write LBA %llu blocks %u\n",
+ 			(unsigned long long)scsi_get_lba(cmd),
+ 			scsi_logical_block_count(cmd));
++	if (unlikely(ufshcd_warsaw_gpt_window_write(cmd)))
++		dev_notice_ratelimited(hba->dev,
++			"Warsaw UFS guard allowed GPT-window write LUN %llu LBA %llu blocks %u\n",
++			(unsigned long long)cmd->device->lun,
++			(unsigned long long)scsi_get_lba(cmd),
++			scsi_logical_block_count(cmd));
+ 
+ 	switch (hba->ufshcd_state) {
+ 	case UFSHCD_STATE_OPERATIONAL:
+@@ -11075,7 +11111,7 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ 	 */
+ 	dev_set_drvdata(dev, hba);
+ 	dev_notice(hba->dev,
+-		   "Warsaw UFS root-window write guard active; all other media writes blocked\n");
++		   "Warsaw UFS root/GPT-window write guard active; all other media writes blocked\n");
+ 
+ 	if (!mmio_base) {
+ 		dev_err(hba->dev,

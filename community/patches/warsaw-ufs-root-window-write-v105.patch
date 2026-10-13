@@ -1,0 +1,139 @@
+diff --git a/drivers/scsi/sd.c b/drivers/scsi/sd.c
+--- a/drivers/scsi/sd.c
++++ b/drivers/scsi/sd.c
+@@ -4078,6 +4078,21 @@ static int sd_probe(struct scsi_device *sdp)
+ 	sdkp->max_medium_access_timeouts = SD_MAX_MEDIUM_TIMEOUTS;
+ 
+ 	sd_revalidate_disk(gd);
++	if (sdp->host->hostt->proc_name &&
++	    !strcmp(sdp->host->hostt->proc_name, "ufshcd")) {
++		if (sdp->lun == 0) {
++			sdkp->write_prot = 0;
++			set_disk_ro(gd, 0);
++			sd_printk(KERN_NOTICE, sdkp,
++				  "Warsaw root-window writer enabled for LUN0; partition scan enabled\n");
++		} else {
++			gd->flags |= GENHD_FL_NO_PART;
++			sdkp->write_prot = 1;
++			set_disk_ro(gd, 1);
++			sd_printk(KERN_NOTICE, sdkp,
++				  "Warsaw UFS guard forced non-LUN0 disk read-only and disabled partition scan\n");
++		}
++	}
+ 	if (sdp->sector_size > PAGE_SIZE) {
+ 		if (sd_large_pool_create()) {
+ 			error = -ENOMEM;
+diff --git a/drivers/ufs/core/ufshcd.c b/drivers/ufs/core/ufshcd.c
+--- a/drivers/ufs/core/ufshcd.c
++++ b/drivers/ufs/core/ufshcd.c
+@@ -3048,6 +3048,80 @@ static int ufshcd_init_cmd_priv(struct Scsi_Host *host, struct scsi_cmnd *cmd)
+ 	return 0;
+ }
+ 
++#define WARSAW_ROOT_FIRST_LBA	32815360ULL
++#define WARSAW_ROOT_LAST_LBA	62112234ULL
++
++static bool ufshcd_warsaw_root_window_write(struct scsi_cmnd *cmd)
++{
++	sector_t lba;
++	unsigned int blocks;
++
++	if (cmd->device->lun != 0)
++		return false;
++	if (cmd->cmnd[0] != WRITE_10 && cmd->cmnd[0] != WRITE_16)
++		return false;
++
++	lba = scsi_get_lba(cmd);
++	blocks = scsi_logical_block_count(cmd);
++	if (!blocks || lba < WARSAW_ROOT_FIRST_LBA ||
++	    lba > WARSAW_ROOT_LAST_LBA)
++		return false;
++	return blocks <= WARSAW_ROOT_LAST_LBA - lba + 1;
++}
++
++static bool ufshcd_warsaw_command_may_modify_media(struct scsi_cmnd *cmd)
++{
++	if (ufshcd_warsaw_root_window_write(cmd))
++		return false;
++	if (cmd->device->lun == 0 &&
++	    (cmd->cmnd[0] == SYNCHRONIZE_CACHE ||
++	     cmd->cmnd[0] == SYNCHRONIZE_CACHE_16))
++		return false;
++	if (cmd->sc_data_direction == DMA_TO_DEVICE ||
++	    cmd->sc_data_direction == DMA_BIDIRECTIONAL ||
++	    cmd->cmnd[0] >= VENDOR_SPECIFIC_CDB)
++		return true;
++
++	switch (cmd->cmnd[0]) {
++	case FORMAT_UNIT:
++	case REASSIGN_BLOCKS:
++	case WRITE_6:
++	case MODE_SELECT:
++	case ERASE:
++	case SEND_DIAGNOSTIC:
++	case WRITE_10:
++	case WRITE_VERIFY:
++	case SYNCHRONIZE_CACHE:
++	case WRITE_BUFFER:
++	case UPDATE_BLOCK:
++	case WRITE_LONG:
++	case WRITE_SAME:
++	case UNMAP:
++	case LOG_SELECT:
++	case XDWRITEREAD_10:
++	case MODE_SELECT_10:
++	case PERSISTENT_RESERVE_OUT:
++	case VARIABLE_LENGTH_CMD:
++	case ACCESS_CONTROL_OUT:
++	case COMPARE_AND_WRITE:
++	case WRITE_16:
++	case WRITE_ATTRIBUTE:
++	case WRITE_VERIFY_16:
++	case SYNCHRONIZE_CACHE_16:
++	case WRITE_SAME_16:
++	case ZBC_OUT:
++	case WRITE_ATOMIC_16:
++	case MAINTENANCE_OUT:
++	case WRITE_12:
++	case WRITE_VERIFY_12:
++	case SECURITY_PROTOCOL_OUT:
++	case WRITE_LONG_2:
++		return true;
++	default:
++		return false;
++	}
++}
++
+ /**
+  * ufshcd_queuecommand - main entry point for SCSI requests
+  * @host: SCSI host pointer
+@@ -3065,6 +3139,20 @@ static enum scsi_qc_status ufshcd_queuecommand(struct Scsi_Host *host,
+ 	int err = 0;
+ 	struct ufs_hw_queue *hwq = NULL;
+ 
++	if (unlikely(ufshcd_warsaw_command_may_modify_media(cmd))) {
++		dev_warn_ratelimited(hba->dev,
++			"Warsaw UFS guard blocked LUN %llu SCSI opcode 0x%02x\n",
++			(unsigned long long)cmd->device->lun, cmd->cmnd[0]);
++		set_host_byte(cmd, DID_ERROR);
++		scsi_done(cmd);
++		return 0;
++	}
++	if (unlikely(ufshcd_warsaw_root_window_write(cmd)))
++		dev_notice_ratelimited(hba->dev,
++			"Warsaw UFS guard allowed root-window write LBA %llu blocks %u\n",
++			(unsigned long long)scsi_get_lba(cmd),
++			scsi_logical_block_count(cmd));
++
+ 	switch (hba->ufshcd_state) {
+ 	case UFSHCD_STATE_OPERATIONAL:
+ 		break;
+@@ -10985,6 +11073,8 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
+ 	 * sysfs).
+ 	 */
+ 	dev_set_drvdata(dev, hba);
++	dev_notice(hba->dev,
++		   "Warsaw UFS root-window write guard active; all other media writes blocked\n");
+ 
+ 	if (!mmio_base) {
+ 		dev_err(hba->dev,

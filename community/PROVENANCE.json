@@ -1,0 +1,130 @@
+{
+  "historical_version": "v141",
+  "kernel_release": "7.2.0-rc7-J-x-Z-warsaw-stageA-v141",
+  "base": "Archived source-v7-local-root-v119-cpufreq-policy",
+  "full_kernel_rebuilt_for_publication": false,
+  "latest_development_source_included": false,
+  "patches": [
+    {
+      "name": "warsaw-usb-ssh-integrated-qcom-dts.patch",
+      "sha256": "336db785b762764dc6fbd093e9f90ebe1e6428cd5bc12cf0978aa836214259f9",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-p12x-handoff.patch",
+      "sha256": "2f3a73d9b8294d0a86852f752590ae51892ac38f75251cbb4b8577031de8a7ab",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-ufs-readonly-v95.patch",
+      "sha256": "89f3b58221d0f477fcbef6c445ac9719dc4ee5526da32e57f844dd3875a50dfa",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-ufs-root-window-write-v105.patch",
+      "sha256": "d766d1177e42664f1aa43b68b27c676c51863a76063cffbdc20db77dc0bb4ce9",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-ufs-gpt-fallback-window-v108.patch",
+      "sha256": "cf565c485b23d02cd41118b79e6996006ce5991c6c3a5d98c59a0a2249458b49",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-adsp-bringup-v110.patch",
+      "sha256": "80f690edbb5a00c318040260ccba6e1c6a0b8cf4c3e0c4d976a95d49950e1cb5",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-bq27z561-readonly-v117.patch",
+      "sha256": "c77cde185bd6b1930601e36793af5085803cacfdc89bf8600791fbb539ae8436",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-cpufreq-cooling-policy-v119.patch",
+      "sha256": "77257d07bc98e9129b93292dd96d2fbd343a816be8fcdb1b123883455121e684",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-goodix-gt9916-v120.patch",
+      "sha256": "04a25f42d5255e522aa29cdaf17b4cc94749cf95c56910a1bb2e94fe6141f87f",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-goodix-gpi-dma-enable-v122.patch",
+      "sha256": "a0d294a4b73e52108488fef411f201dac9327aca7321210576649b70ed62803f",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-goodix-irq-edge-v123.patch",
+      "sha256": "5771cef6612cd51e069b246f2781e52e0b7d723f87889df12b5a024c2ca558d1",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-goodix-coordinate-mode-v124.patch",
+      "sha256": "dae0e97208d1bc09c3404e4a73bfd68a3dddc93373aab77390a4533aec802d73",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-pmic-input-thermal-v125.patch",
+      "sha256": "d9b71f1495178ed0717eed0389eeaa3b82c221e26680409927ab5250366ec0a1",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-pcie-link-v127.patch",
+      "sha256": "8e4f27ff432188d844c2ed3c5ce55c9b32fa16ae0a4055af3fbfaec97ced42fe",
+      "method": "historical GNU patch --fuzz=0 --forward --batch"
+    },
+    {
+      "name": "warsaw-wcn7850-endpoint-v128.patch",
+      "sha256": "ab90cf54cfb885871ecbed834cc6d374e5b3d715ae3326ef3e47df51ae725878",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-wcn7850-phy-tuning-v129.patch",
+      "sha256": "34d965315fd9e09bb5127f59c8609e3a9b5695dd50481af9c78447af65d635ac",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-wcn7850-wlan-enable-v130.patch",
+      "sha256": "b83b42214be9febeee7dc2154c8916ba0a43107c7647d1a69ee0e703e2b48a81",
+      "method": "git apply no fuzzy context"
+    },
+    {
+      "name": "warsaw-v141-dispcc-dsi-parent-combined.patch",
+      "sha256": "cd07fe05e9fec26f1917ffd411614794acde9994a1feb95c013c6e21d0f2e21b",
+      "method": "git apply no fuzzy context"
+    }
+  ],
+  "historical_patch_changed_paths": [
+    "arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts",
+    "arch/arm64/boot/dts/qcom/sm8750.dtsi",
+    "drivers/clk/qcom/dispcc-sm8750.c",
+    "drivers/gpu/drm/msm/dsi/dsi_host.c",
+    "drivers/gpu/drm/msm/msm_fbdev.c",
+    "drivers/gpu/drm/panel/Kconfig",
+    "drivers/gpu/drm/panel/Makefile",
+    "drivers/gpu/drm/panel/panel-xiaomi-p12x.c",
+    "drivers/input/touchscreen/goodix_berlin_core.c",
+    "drivers/pci/pwrctrl/Kconfig",
+    "drivers/phy/qualcomm/phy-qcom-qmp-pcie.c",
+    "drivers/power/supply/bq27xxx_battery_i2c.c",
+    "drivers/power/supply/qcom_battmgr.c",
+    "drivers/scsi/sd.c",
+    "drivers/ufs/core/ufshcd.c",
+    "drivers/usb/dwc3/Makefile"
+  ],
+  "source_baseline_six_pins_pass": true,
+  "historical_DTB_source_recompile_byte_identical": true,
+  "historical_DTB_sha256": "134fd9278aeae2539809c578093c4cc39ea7bcbd4da9d42f291f72409fd448fd",
+  "original_private_image_sha256": "f6ca444108196b0a19e2dd528d5d8fa7b7311da8debc2f28f604f6ed162b747a",
+  "public_image_sha256": "9e2852f8690beee5225a0a5c85ccc38b18a62c5c8039163236c92cabcb26e89c",
+  "public_image_size": 89403392,
+  "publication_change": "Replace only embedded private initramfs with supplied freestanding diagnostic init, padded to identical range",
+  "public_image_hardware_retested": false,
+  "historical_kernel_toolchain": "Clang 22.1.8",
+  "diagnostic_init_toolchain": "Homebrew Clang 23.1.2, AArch64 ELF target, static/freestanding",
+  "publication_author": "Jiaxi Zhang <z1529105815@outlook.com>",
+  "original_file_attribution_retained": true,
+  "git_history": "Isolated historical source snapshot only, no shared or recent history"
+}

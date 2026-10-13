@@ -1,0 +1,30 @@
+name: Historical snapshot feedback
+description: Report a reproducible issue or review finding in the published historical snapshot.
+title: "[v141] "
+body:
+  - type: textarea
+    id: version
+    attributes:
+      label: Source and image version
+      description: Include the Git commit, release asset name and configuration changes.
+    validations:
+      required: true
+  - type: textarea
+    id: device
+    attributes:
+      label: Device and test environment
+      description: Board variant, firmware baseline, boot route and whether this is source-only review. Do not include unique device identifiers.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction or source finding
+      description: Steps, expected result, actual result, and relevant source paths.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Relevant evidence
+      description: Include the first useful error or a small log excerpt. Remove credentials and private calibration data. Video is optional.

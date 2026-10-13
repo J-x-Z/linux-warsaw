@@ -1,0 +1,182 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+index 9063ecf2f3ac..239b2de7de10 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -189,6 +189,177 @@ &tlmm {
+ 	gpio-reserved-ranges = <36 4>, <48 4>, <74 1>;
+ };
+ 
++&{/thermal-zones/cpu-0-0-0-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu000_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu0-map {
++			trip = <&warsaw_cpu000_cpufreq_trip>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-0-2-0-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu020_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu0-map {
++			trip = <&warsaw_cpu020_cpufreq_trip>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-0-2-1-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu021_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu0-map {
++			trip = <&warsaw_cpu021_cpufreq_trip>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-0-4-0-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu040_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu0-map {
++			trip = <&warsaw_cpu040_cpufreq_trip>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-0-4-1-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu041_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu0-map {
++			trip = <&warsaw_cpu041_cpufreq_trip>;
++			cooling-device = <&cpu0 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-1-0-0-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu100_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu6-map {
++			trip = <&warsaw_cpu100_cpufreq_trip>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-1-0-1-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu101_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu6-map {
++			trip = <&warsaw_cpu101_cpufreq_trip>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-1-1-0-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu110_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu6-map {
++			trip = <&warsaw_cpu110_cpufreq_trip>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
++&{/thermal-zones/cpu-1-1-1-thermal} {
++	polling-delay-passive = <4>;
++
++	trips {
++		warsaw_cpu111_cpufreq_trip: warsaw-cpufreq-passive {
++			temperature = <95000>;
++			hysteresis = <8000>;
++			type = "passive";
++		};
++	};
++
++	cooling-maps {
++		warsaw-cpufreq-cpu6-map {
++			trip = <&warsaw_cpu111_cpufreq_trip>;
++			cooling-device = <&cpu6 THERMAL_NO_LIMIT THERMAL_NO_LIMIT>;
++		};
++	};
++};
++
+ &uart14 {
+ 	status = "disabled";
+ };

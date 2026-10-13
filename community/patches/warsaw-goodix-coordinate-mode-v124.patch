@@ -1,0 +1,187 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -200,6 +200,8 @@
+ 		avdd-supply = <&touch_avdd_vreg>;
+ 		vddio-supply = <&vreg_l12b_1p8>;
+ 
++		goodix,coordinate-mode;
++
+ 		spi-max-frequency = <15000000>;
+ 
+ 		touchscreen-size-x = <1280>;
+diff --git a/drivers/input/touchscreen/goodix_berlin_core.c b/drivers/input/touchscreen/goodix_berlin_core.c
+--- a/drivers/input/touchscreen/goodix_berlin_core.c
++++ b/drivers/input/touchscreen/goodix_berlin_core.c
+@@ -35,6 +35,19 @@
+ 
+ #define GOODIX_BERLIN_NORMAL_RESET_DELAY_MS	100
+ 
++#define GOODIX_BERLIN_CMD_SIZE			16
++#define GOODIX_BERLIN_CMD_RETRY			6
++#define GOODIX_BERLIN_CMD_ACK_BUSY		0x02
++#define GOODIX_BERLIN_CMD_ACK_BUFFER_OVERFLOW	0x03
++#define GOODIX_BERLIN_CMD_ACK_OK		0x80
++
++#define GOODIX_BERLIN_CMD_FRAME_DATA		0x90
++#define GOODIX_BERLIN_CMD_TOUCH_DATA		0x91
++
++#define GOODIX_BERLIN_FRAME_DATA_DIFF		0x02
++#define GOODIX_BERLIN_FRAME_DATA_DISABLE	0x00
++#define GOODIX_BERLIN_TOUCH_DATA_AUTO_SYNC	0x81
++
+ #define GOODIX_BERLIN_TOUCH_EVENT		BIT(7)
+ #define GOODIX_BERLIN_REQUEST_EVENT		BIT(6)
+ #define GOODIX_BERLIN_TOUCH_COUNT_MASK		GENMASK(3, 0)
+@@ -173,7 +186,9 @@ struct goodix_berlin_core {
+ 	int irq;
+ 
+ 	/* Runtime parameters extracted from IC_INFO buffer  */
++	u32 cmd_addr;
+ 	u32 touch_data_addr;
++	bool coordinate_mode;
+ 
+ 	const struct goodix_berlin_ic_data *ic_data;
+ 
+@@ -347,7 +362,11 @@ static int goodix_berlin_parse_ic_info(struct goodix_berlin_core *cd,
+ 	ADVANCE_LE16_PARAMS(); /* stylus_freq_num */
+ #undef ADVANCE_LE16_PARAMS
+ 
++	if (offset + sizeof(*misc) > length)
++		goto invalid_offset;
++
+ 	misc = (struct goodix_berlin_ic_info_misc *)&data[offset];
++	cd->cmd_addr = le32_to_cpu(misc->cmd_addr);
+ 	cd->touch_data_addr = le32_to_cpu(misc->touch_data_addr);
+ 
+ 	return 0;
+@@ -402,6 +421,87 @@ static int goodix_berlin_get_ic_info(struct goodix_berlin_core *cd)
+ 	return 0;
+ }
+ 
++static int goodix_berlin_send_cmd(struct goodix_berlin_core *cd, u8 command,
++				  const u8 *data, size_t data_len)
++{
++	u8 tx[GOODIX_BERLIN_CMD_SIZE] = {};
++	u8 rx[GOODIX_BERLIN_CMD_SIZE];
++	u16 checksum = 0;
++	int error, poll, retry;
++	size_t i;
++
++	if (!cd->cmd_addr || data_len > sizeof(tx) - 8)
++		return -EINVAL;
++
++	tx[2] = data_len + 4;
++	tx[3] = command;
++	memcpy(&tx[4], data, data_len);
++
++	for (i = 2; i < tx[2]; i++)
++		checksum += tx[i];
++	put_unaligned_le16(checksum, &tx[tx[2]]);
++
++	for (retry = 0; retry < GOODIX_BERLIN_CMD_RETRY; retry++) {
++		error = regmap_raw_write(cd->regmap, cd->cmd_addr, tx, sizeof(tx));
++		if (error)
++			return error;
++
++		for (poll = 0; poll < GOODIX_BERLIN_CMD_RETRY; poll++) {
++			error = regmap_raw_read(cd->regmap, cd->cmd_addr, rx,
++						sizeof(rx));
++			if (error)
++				return error;
++
++			if (rx[1] == GOODIX_BERLIN_CMD_ACK_OK) {
++				usleep_range(4000, 4100);
++				return 0;
++			}
++
++			if (!rx[1] || rx[1] == GOODIX_BERLIN_CMD_ACK_BUSY) {
++				usleep_range(1000, 1100);
++				continue;
++			}
++
++			if (rx[1] == GOODIX_BERLIN_CMD_ACK_BUFFER_OVERFLOW)
++				usleep_range(10000, 11000);
++
++			break;
++		}
++	}
++
++	dev_err(cd->dev, "command 0x%02x failed, last ack 0x%02x\n",
++		command, rx[1]);
++	return -EINVAL;
++}
++
++static int goodix_berlin_set_coordinate_mode(struct goodix_berlin_core *cd)
++{
++	static const u8 frame_data[] = {
++		GOODIX_BERLIN_FRAME_DATA_DIFF,
++		GOODIX_BERLIN_FRAME_DATA_DISABLE,
++	};
++	static const u8 touch_data[] = {
++		GOODIX_BERLIN_TOUCH_DATA_AUTO_SYNC,
++	};
++	int error;
++
++	if (!cd->coordinate_mode)
++		return 0;
++
++	error = goodix_berlin_send_cmd(cd, GOODIX_BERLIN_CMD_FRAME_DATA,
++				       frame_data, sizeof(frame_data));
++	if (error)
++		return error;
++
++	error = goodix_berlin_send_cmd(cd, GOODIX_BERLIN_CMD_TOUCH_DATA,
++				       touch_data, sizeof(touch_data));
++	if (error)
++		return error;
++
++	dev_info(cd->dev, "standard coordinate reporting enabled\n");
++	return 0;
++}
++
+ static int goodix_berlin_get_remaining_contacts(struct goodix_berlin_core *cd,
+ 						int n)
+ {
+@@ -514,7 +614,7 @@ static int goodix_berlin_request_handle_reset(struct goodix_berlin_core *cd)
+ 
+ 	msleep(GOODIX_BERLIN_NORMAL_RESET_DELAY_MS);
+ 
+-	return 0;
++	return goodix_berlin_set_coordinate_mode(cd);
+ }
+ 
+ static irqreturn_t goodix_berlin_irq(int irq, void *data)
+@@ -678,6 +778,10 @@ static int goodix_berlin_resume(struct device *dev)
+ 	if (error)
+ 		return error;
+ 
++	error = goodix_berlin_set_coordinate_mode(cd);
++	if (error)
++		return error;
++
+ 	enable_irq(cd->irq);
+ 
+ 	return 0;
+@@ -746,6 +850,8 @@ int goodix_berlin_probe(struct device *dev, int irq, const struct input_id *id,
+ 	cd->regmap = regmap;
+ 	cd->irq = irq;
+ 	cd->ic_data = ic_data;
++	cd->coordinate_mode =
++		device_property_read_bool(dev, "goodix,coordinate-mode");
+ 
+ 	cd->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_HIGH);
+ 	if (IS_ERR(cd->reset_gpio))
+@@ -782,6 +888,12 @@ int goodix_berlin_probe(struct device *dev, int irq, const struct input_id *id,
+ 		return error;
+ 	}
+ 
++	error = goodix_berlin_set_coordinate_mode(cd);
++	if (error) {
++		dev_err(dev, "failed to enable coordinate reporting: %d\n", error);
++		return error;
++	}
++
+ 	error = goodix_berlin_input_dev_config(cd, id);
+ 	if (error) {
+ 		dev_err(dev, "failed set input device");

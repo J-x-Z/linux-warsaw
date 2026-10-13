@@ -1,0 +1,17 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -128,11 +128,11 @@
+ };
+ 
+ &pcie0 {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &pcie0_phy {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &pm8550_flash {

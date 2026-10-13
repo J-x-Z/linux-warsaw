@@ -1,0 +1,37 @@
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -203,13 +203,22 @@
+ };
+ 
+ &usb {
+-	status = "disabled";
++	/delete-property/ phys;
++	/delete-property/ phy-names;
++	/delete-property/ usb-role-switch;
++
++	phys = <&usb_hsphy>;
++	phy-names = "usb2-phy";
++	dr_mode = "peripheral";
++	maximum-speed = "high-speed";
++	qcom,select-utmi-as-pipe-clk;
++	status = "okay";
+ };
+ 
+ &usb_dp_qmpphy {
+ 	status = "disabled";
+ };
+ 
+ &usb_hsphy {
+-	status = "disabled";
++	status = "okay";
+ };
+--- a/drivers/usb/dwc3/Makefile
++++ b/drivers/usb/dwc3/Makefile
+@@ -53,7 +53,6 @@
+ obj-$(CONFIG_USB_DWC3_OF_SIMPLE)	+= dwc3-of-simple.o
+ obj-$(CONFIG_USB_DWC3_ST)		+= dwc3-st.o
+ obj-$(CONFIG_USB_DWC3_QCOM)		+= dwc3-qcom.o
+-obj-$(CONFIG_USB_DWC3_QCOM)		+= dwc3-qcom-legacy.o
+ obj-$(CONFIG_USB_DWC3_IMX8MP)		+= dwc3-imx8mp.o
+ obj-$(CONFIG_USB_DWC3_IMX)		+= dwc3-imx.o
+ obj-$(CONFIG_USB_DWC3_XILINX)		+= dwc3-xilinx.o

@@ -1,0 +1,48 @@
+diff --git a/drivers/pci/pwrctrl/Kconfig b/drivers/pci/pwrctrl/Kconfig
+--- a/drivers/pci/pwrctrl/Kconfig
++++ b/drivers/pci/pwrctrl/Kconfig
+@@ -6,9 +6,12 @@
+ config PCI_PWRCTRL
+ 	tristate
+ 
+ config PCI_PWRCTRL_PWRSEQ
+-	tristate
++	tristate "Power-sequencing based PCI power control"
+ 	select POWER_SEQUENCING
+ 	select PCI_PWRCTRL
++	help
++	  Enable the PCI power-control wrapper for devices whose power operations
++	  are provided by the power sequencing subsystem.
+ 
+ config PCI_PWRCTRL_GENERIC
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -105,6 +105,12 @@
+ 	sound {
+ 		status = "disabled";
+ 	};
++
++	wcn7850-pmu {
++		pinctrl-0 = <&wlan_en>,
++			    <&warsaw_wcn_sw_ctrl>,
++			    <&warsaw_wcn_sw>;
++	};
+ 
+ 	touch_avdd_vreg: regulator-touch-avdd {
+ 		compatible = "regulator-fixed";
+@@ -188,4 +194,14 @@
+ &tlmm {
+ 	/* Keep firmware-reserved Warsaw GPIOs out of direct HLOS access. */
+ 	gpio-reserved-ranges = <36 4>, <48 4>, <74 1>;
++
++	warsaw_wcn_sw_ctrl: warsaw-wcn-sw-ctrl-state {
++		pins = "gpio18";
++		function = "wcn_sw_ctrl";
++	};
++
++	warsaw_wcn_sw: warsaw-wcn-sw-state {
++		pins = "gpio19";
++		function = "wcn_sw";
++	};
+ };

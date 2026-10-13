@@ -1,0 +1,62 @@
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -113,6 +113,16 @@
+ 	status = "disabled";
+ };
+ 
++&i2c5 {
++	clock-frequency = <400000>;
++	status = "okay";
++
++	fuel-gauge@55 {
++		compatible = "ti,bq27z561";
++		reg = <0x55>;
++	};
++};
++
+ &iris {
+ 	status = "disabled";
+ };
+--- a/drivers/power/supply/bq27xxx_battery_i2c.c
++++ b/drivers/power/supply/bq27xxx_battery_i2c.c
+@@ -187,10 +187,16 @@ static int bq27xxx_battery_i2c_probe(struct i2c_client *client)
+ 	di->name = name;
+ 
+ 	di->bus.read = bq27xxx_battery_i2c_read;
+-	di->bus.write = bq27xxx_battery_i2c_write;
+ 	di->bus.read_bulk = bq27xxx_battery_i2c_bulk_read;
+-	di->bus.write_bulk = bq27xxx_battery_i2c_bulk_write;
++
++	if (di->chip == BQ27Z561) {
++		dev_info(&client->dev,
++			 "Warsaw BQ27Z561 diagnostic read-only mode enabled\n");
++	} else {
++		di->bus.write = bq27xxx_battery_i2c_write;
++		di->bus.write_bulk = bq27xxx_battery_i2c_bulk_write;
++	}
+ 
+ 	ret = bq27xxx_battery_setup(di);
+ 	if (ret)
+ 		return ret;
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -8,6 +8,7 @@
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/nvmem-consumer.h>
++#include <linux/of.h>
+ #include <linux/of_device.h>
+ #include <linux/power_supply.h>
+ #include <linux/property.h>
+@@ -1634,6 +1634,11 @@ static int qcom_battmgr_probe(struct auxiliary_device *adev,
+ 	struct device *dev = &adev->dev;
+ 	int ret;
+ 
++	if (of_machine_is_compatible("xiaomi,warsaw")) {
++		dev_info(dev, "Warsaw direct BQ27Z561 mode: QCOM battery manager disabled\n");
++		return -ENODEV;
++	}
++
+ 	battmgr = devm_kzalloc(dev, sizeof(*battmgr), GFP_KERNEL);
+ 	if (!battmgr)
+ 		return -ENOMEM;

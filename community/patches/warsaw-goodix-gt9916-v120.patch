@@ -1,0 +1,47 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -98,6 +98,14 @@
+ 	sound {
+ 		status = "disabled";
+ 	};
++
++	touch_avdd_vreg: regulator-touch-avdd {
++		compatible = "regulator-fixed";
++		regulator-name = "touch_avdd_vreg";
++
++		gpio = <&tlmm 114 GPIO_ACTIVE_HIGH>;
++		enable-active-high;
++	};
+ };
+ 
+ &adspslpi_mem {
+@@ -166,6 +174,28 @@
+ 	status = "disabled";
+ };
+ 
++&spi2 {
++	status = "okay";
++
++	touchscreen@0 {
++		compatible = "goodix,gt9916";
++		reg = <0>;
++
++		interrupt-parent = <&tlmm>;
++		interrupts = <162 IRQ_TYPE_LEVEL_LOW>;
++
++		reset-gpios = <&tlmm 161 GPIO_ACTIVE_LOW>;
++
++		avdd-supply = <&touch_avdd_vreg>;
++		vddio-supply = <&vreg_l12b_1p8>;
++
++		spi-max-frequency = <15000000>;
++
++		touchscreen-size-x = <1280>;
++		touchscreen-size-y = <2772>;
++	};
++};
++
+ &swr0 {
+ 	status = "disabled";
+ };

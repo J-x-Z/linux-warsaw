@@ -1,0 +1,18 @@
+diff --git a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+index 6426f12a8349..7f89c4a6783e 100644
+--- a/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
++++ b/arch/arm64/boot/dts/qcom/sm8750-xiaomi-warsaw.dts
+@@ -195,11 +195,11 @@ &uart14 {
+ };
+ 
+ &ufs_mem_hc {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &ufs_mem_phy {
+-	status = "disabled";
++	status = "okay";
+ };
+ 
+ &usb {
