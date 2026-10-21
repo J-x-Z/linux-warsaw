@@ -1,4 +1,5 @@
 # Linux on Xiaomi Warsaw — historical v141 snapshot
+#红米K90 ultra，当前内核源码是提交主线上游前的最后一版用于测试，使用了很多私有补丁不够规范，最新源码已跟随上游到最新版本，正在被上游审核，等待审核通过后大约在2027年年初进行更新。
 
 This repository publishes an archived **v141** development snapshot for community source review and feedback. Warsaw is an SM8750 Xiaomi engineering handset. This is an experimental Linux bring-up tree, not the Android kernel repository and not the current development version.
 
